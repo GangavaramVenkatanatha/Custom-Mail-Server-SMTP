@@ -1,0 +1,108 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include "../include/auth.h"
+#include "../include/mail.h"
+#include "../include/logger.h"
+#include "../include/dkim.h"
+
+#define PORT 1100
+
+void handle_client(int client) {
+
+    char buffer[4096], username[100], password[100];
+    char challenge[100];
+    char mode[20] = "inbox";
+    int auth_attempts = 0;
+
+    generate_challenge(challenge);
+    sprintf(buffer, "+OK CHALLENGE %s\n", challenge);
+    send(client, buffer, strlen(buffer), 0);
+
+    while (auth_attempts < 3) {
+
+        recv(client, buffer, sizeof(buffer), 0);
+        sscanf(buffer, "AUTH %s %s", username, password);
+
+        if (verify_user(username, password, challenge)) {
+            send(client, "+OK Auth Success\n", 17, 0);
+            log_event("POP3 Login Success");
+            break;
+        } else {
+            auth_attempts++;
+            send(client, "-ERR Auth Failed\n", 17, 0);
+            sleep(2);
+        }
+    }
+
+    if (auth_attempts == 3) {
+        close(client);
+        return;
+    }
+
+    while (1) {
+
+        recv(client, buffer, sizeof(buffer), 0);
+
+        if (strncmp(buffer, "MODE SENT", 9) == 0)
+            strcpy(mode, "sent");
+
+        else if (strncmp(buffer, "MODE INBOX", 10) == 0)
+            strcpy(mode, "inbox");
+
+        else if (strncmp(buffer, "LIST", 4) == 0) {
+            int count = count_messages(username, mode);
+            sprintf(buffer, "+OK %d messages\n", count);
+            send(client, buffer, strlen(buffer), 0);
+        }
+
+        else if (strncmp(buffer, "RETR", 4) == 0) {
+            int msg_no;
+            sscanf(buffer, "RETR %d", &msg_no);
+
+            char mail[4096] = {0};
+
+            if (retrieve_message(username, mode, msg_no, mail))
+                send(client, mail, strlen(mail), 0);
+            else
+                send(client, "-ERR No such message\n", 22, 0);
+        }
+
+        else if (strncmp(buffer, "QUIT", 4) == 0) {
+            close(client);
+            break;
+        }
+    }
+}
+
+int main() {
+
+    int server_fd, client;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    bind(server_fd, (struct sockaddr *)&address, sizeof(address));
+    listen(server_fd, 5);
+
+    printf("POP3 Server running on port %d...\n", PORT);
+
+    while (1) {
+
+        client = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+
+        if (fork() == 0) {
+            handle_client(client);
+            exit(0);
+        }
+
+        close(client);
+    }
+}

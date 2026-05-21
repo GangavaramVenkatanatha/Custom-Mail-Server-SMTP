@@ -1,0 +1,51 @@
+Commands on server: (SMTP)
+1. To compile: 
+gcc src/smtp_server.c \
+    src/auth.c \
+    src/mail.c \
+    src/dkim.c \
+    src/logger.c \
+    -o smtp_server \
+    -lssl -lcrypto
+
+2. To run:
+./smtp_server
+
+On client machine:
+1.nc <ip address> 2525
+2.
+REGISTER <name> <pass>   //Iff not registered already
+AUTH <name> <pass>       //Authentication
+MAIL FROM: <name>
+RCPT TO: <name>          //If user not found/registered gives error
+DATA
+//content//
+.
+QUIT
+
+Commands on server: (POP3)
+1. To compile
+
+gcc src/pop3_server.c \
+    src/auth.c \
+    src/mail.c \
+    src/dkim.c \
+    src/logger.c \
+    -o pop3_server \
+    -lssl -lcrypto
+
+2. To run:
+
+./pop3_server
+
+On Client:
+1. nc <ip addr> 1100
+2. 
+AUTH <name> <pass>
+MODE INBOX
+LIST
+RETR 1
+MODE SENT
+LIST
+RETR 1
+QUIT
