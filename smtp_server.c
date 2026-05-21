@@ -9,7 +9,7 @@
 
 #define PORT 2525
 #define BUFFER_SIZE 4096
-#define MAX_CLIENTS 5
+#define MAX_CLIENTS 100
 
 int active_clients = 0;
 int server_fd;
