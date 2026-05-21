@@ -336,6 +336,10 @@ Example:
 
 <img width="1074" height="519" alt="Screenshot 2026-05-21 231905" src="https://github.com/user-attachments/assets/2fc83e6e-2ac4-438f-a7ca-2e54310ea94b" />
 
+### NOTE
+>>> Note that both server and client should be connected on same wifi or hotspot
+>>> And this server is limited to only 100 connections
+
 ---
 
 ## Future Improvements
